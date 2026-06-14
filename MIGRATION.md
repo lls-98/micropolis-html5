@@ -15,7 +15,7 @@
 - [ ] HelicopterSprite.java
 - [ ] MapGenerator.java
 - [ ] MapListener.java
-- [ ] MapScanner.java
+- [x] MapScanner.java -> mapScanner.js and zonePlopManager.js
 - [ ] MapState.java
 - [x] Micropolis.java ➔ micropolis.js & 8 more files
 - [ ] MicropolisMessage.java
@@ -99,3 +99,5 @@ As a result, Micropolis.java will become:
 TileConstants.java became tileConstants.js and tileValidator.js, splitting the tasks on different files.
 
 CityLocation, CityRect and CityDimension were unified into cityGeometry.js.
+
+MapScanner becomes mapScanner and zonePlopManager.js

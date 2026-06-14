@@ -1,3 +1,4 @@
+import { TileConstants } from './tileConstants.js';
 import { EventEmitter } from './eventEmitter.js';
 import { MapGrid } from './mapGrid.js';
 import { DemandValves } from './demandValves.js';
@@ -5,6 +6,7 @@ import { CensusManager } from './censusManager.js';
 import { SimulationClock } from './simulationClock.js';
 import { PowerGrid } from './powerGrid.js';
 import { DisasterManager } from './disasterManager.js';
+import { MapScanner } from './mapScanner.js';
 
 /**
  * The core controller and state hub for Micropolis.
@@ -19,6 +21,9 @@ export class Micropolis extends EventEmitter {
         this.taxRate = 7;   // Classic 7% neutral tax rate
         this.totalFunds = 20000;
 
+        // Link the global constants registry here
+        this.constants = TileConstants;
+
         // --- Instantiate Submodules ---
         this.map = new MapGrid(120, 100);
         this.valves = new DemandValves();
@@ -29,9 +34,16 @@ export class Micropolis extends EventEmitter {
 
         // --- Stubs for Future Engine Files ---
         // These are separate files in the java source tree that we will port later
-        this.scanner = null;  // Becomes MapScanner.js
+        this.scanner = new MapScanner(this);
         this.budget = null;   // Becomes CityBudget.js
         this.evaluation = null; // Becomes CityEval.js
+
+        this.poweredZoneCount = 0;
+        this.unpoweredZoneCount = 0;
+
+        // Inside your micropolis.js constructor(), add these grid memory matrices:
+        this.fireStationEffectMem = Array.from({ length: 15 }, () => new Uint8Array(15));
+        this.policeStationEffectMem = Array.from({ length: 15 }, () => new Uint8Array(15));
 
         console.log("Modular Micropolis Engine Core fully operational.");
     }
@@ -70,5 +82,28 @@ export class Micropolis extends EventEmitter {
         this.map.setTile(x, y, tileValue);
         // Shout into the event microphone so the frontend view can repaint this tile
         this.emit('tile-changed', { x, y, value: tileValue });
+    }
+
+    isTilePowered(x, y) {
+        // Check if the PWRBIT flag is currently appended to the map coordinate
+        return (this.map.getTile(x, y) & 32768) !== 0;
+    }
+
+    setTilePower(x, y, status) {
+        const current = this.map.getTile(x, y);
+        if (status) {
+            this.map.setTile(x, y, current | 32768); // Append PWRBIT
+        } else {
+            this.map.setTile(x, y, current & ~32768); // Strip PWRBIT
+        }
+    }
+
+    hasPower(x, y) {
+        // Placeholder logic for grid BFS: assume true for testing sandbox purposes
+        return true; 
+    }
+
+    testBounds(x, y) {
+        return x >= 0 && x < this.map.width && y >= 0 && y < this.map.height;
     }
 }
