@@ -3,11 +3,11 @@
 ## Core Simulation Engine Status
 
 - [ ] CityBudget.java ➔ 'src/engine/CityBudget.js'
-- [ ] CityDimension.java
+- [x] CityDimension.java -> cityGeometry.js
 - [ ] CityEval.java
-- [ ] CityLocation.java
+- [x] CityLocation.java -> cityGeometry.js
 - [ ] CityProblem.java
-- [ ] CityRect.java
+- [x] CityRect.java -> cityGeometry.js
 - [ ] Disaster.java
 - [ ] EarthquakeListener.java
 - [ ] ExplosionSprite.java
@@ -17,7 +17,7 @@
 - [ ] MapListener.java
 - [ ] MapScanner.java
 - [ ] MapState.java
-- [ ] Micropolis.java ➔ micropolis.js
+- [x] Micropolis.java ➔ micropolis.js & 8 more files
 - [ ] MicropolisMessage.java
 - [ ] MicropolisTool.java
 - [ ] MonsterSprite.java
@@ -30,7 +30,7 @@
 - [ ] SpriteKind.java
 - [ ] TerrainBehavior.java
 - [ ] TileBehavior.java
-- [ ] TileConstants.java
+- [x] TileConstants.java -> tileConstants.js and tileValidator.js
 - [ ] Tiles.java
 - [ ] TileSpec.java
 - [ ] ToolEffect.java
@@ -95,3 +95,7 @@ As a result, Micropolis.java will become:
 - powerGrid.js : conductive network pathfinding
 - disasterManager.js : disaster RNG and management hooks
 - eventEmitter.js : replaces nested interfaces with an event hub
+
+TileConstants.java became tileConstants.js and tileValidator.js, splitting the tasks on different files.
+
+CityLocation, CityRect and CityDimension were unified into cityGeometry.js.
