@@ -149,5 +149,28 @@ export const TileValidator = {
     isDozeable(tile) {
         // Ensure the asset isn't natural blank water or empty ground
         return tile !== 0 && tile !== 2;
+    },
+
+    isConductive(tile) {
+        const clean = tile & ~32768; // strip simulation flags
+        
+        // Wire ranges, power plants, and layered power grids are conductive
+        return (
+            (clean >= 208 && clean <= 260) || // Base wires & tables
+            clean === 436 ||                  // Coal Plant anchor
+            clean === 445 ||                  // Nuclear Plant anchor
+            (clean >= 793 && clean <= 811)    // Road-Power and Rail-Power overlapping pieces
+        );
+    },
+
+    isRail(tile) {
+        const clean = tile & ~32768; // strip simulation flags
+        
+        // Tracks, tables, crossings, and tunnel entrances
+        return (
+            (clean >= 266 && clean <= 304) || // Base rail tiles & tables
+            clean === 811 ||                  // Combined Rail-Power crossing
+            clean === 812                     // Combined Rail-Power crossing alt
+        );
     }
 };

@@ -102,3 +102,5 @@ TileConstants.java became tileConstants.js and tileValidator.js, splitting the t
 CityLocation, CityRect and CityDimension were unified into cityGeometry.js.
 
 MapScanner becomes mapScanner and zonePlopManager.js
+
+RoadLikeTool becomes roadLikeTool, railPlacer, powerLinePlacer and roadPlacer.

@@ -106,4 +106,9 @@ export class Micropolis extends EventEmitter {
     testBounds(x, y) {
         return x >= 0 && x < this.map.width && y >= 0 && y < this.map.height;
     }
+
+    neutralizeRoad(tile) {
+        // Strips away overlay/simulation status bits (like the power bit 32768)
+        return tile & ~32768; 
+    }
 }
