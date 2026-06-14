@@ -2,6 +2,7 @@
 
 ## Core Simulation Engine Status
 
+- [x] Bulldozer.java -> cityBulldozer.js
 - [ ] CityBudget.java ➔ 'src/engine/CityBudget.js'
 - [x] CityDimension.java -> cityGeometry.js
 - [ ] CityEval.java

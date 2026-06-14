@@ -134,5 +134,20 @@ export const TileValidator = {
     isZoneAny(tileValue) {
         const tile = this.cleanTile(tileValue);
         return tile >= TC.RESBASE;
+    },
+
+    isOverWater(tile) {
+        // Check if tile falls within river channels/bridges criteria
+        return tile === 2 || tile === 3 || tile === 4 || tile === 5 || tile === 79 || tile === 95;
+    },
+
+    isZoneCenter(tile) {
+        // Basic structural anchor check (matches the zone base lookups from TileConstants)
+        return tile === 265 || tile === 436 || tile === 625 || tile === 750 || tile === 816 || tile === 784;
+    },
+
+    isDozeable(tile) {
+        // Ensure the asset isn't natural blank water or empty ground
+        return tile !== 0 && tile !== 2;
     }
 };
