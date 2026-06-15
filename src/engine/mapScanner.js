@@ -1,5 +1,6 @@
 import { TileValidator } from './tileValidator.js';
 import { ZonePlopManager } from './zonePlopManager.js';
+import { TrafficGen } from './trafficGen.js';
 
 /**
  * MapScanner runs the automated cellular simulation logic across the grid.
@@ -12,6 +13,7 @@ export class MapScanner {
      */
     constructor(engine) {
         this.engine = engine;
+        this.traffic = new TrafficGen(engine);
     }
 
     /**
@@ -86,43 +88,54 @@ export class MapScanner {
     }
 
     /**
-     * Math formulas governing residential growth and degradation.
-     * Skeleton port of doResidential() from MapScanner.java.
+     * Math formulas governing residential growth, decline, and traffic access.
      */
     processResidentialZone(x, y, rawTile) {
         const powered = ZonePlopManager.checkAndApplyZonePower(this.engine, x, y, rawTile);
-        
-        // Read global demand rules from our demand valves module
         const demand = this.engine.valves ? this.engine.valves.resValve : 0;
 
         if (!powered) {
-            // Unpowered residential areas rapidly degenerate into empty zones or rubble
             if (Math.random() < 0.15) {
-                this.engine.setTile(x, y, this.engine.constants.RESCLR); // Clear out houses
+                this.engine.setTile(x, y, this.engine.constants.RESCLR);
             }
             return;
         }
 
-        // Simulating population shift patterns based on demand
+        // Run the random-walk traffic pathfinder cycle centered on this residential block
+        const trafficResult = this.traffic.makeTraffic(x, y, 'RESIDENTIAL');
+
+        if (trafficResult <= 0) {
+            // If trafficResult is 0 (gridlock/dead end) or -1 (no road connected at all)
+            // The zone suffers from lack of transit infrastructure access.
+            if (Math.random() < 0.08) {
+                // Decay the zone or mark it visually as un-serviced/abandoned
+                this.engine.emit('notification', { message: `Residential zone at (${x},${y}) lacks transit access!` });
+            }
+            return;
+        }
+
         if (demand > 500 && Math.random() < 0.1) {
-            // Trigger automatic reconstruction/repairs if parts of the zone are broken
             ZonePlopManager.repairZone(this.engine, x, y, this.engine.constants.RZB, this.engine.tileSpecLookup);
         }
     }
 
     /**
-     * Math formulas governing commercial shopping center layouts.
-     * Skeleton port of doCommercial() from MapScanner.java.
+     * Math formulas governing commercial shopping center transit connections.
      */
     processCommercialZone(x, y, rawTile) {
-        ZonePlopManager.checkAndApplyZonePower(this.engine, x, y, rawTile);
+        const powered = ZonePlopManager.checkAndApplyZonePower(this.engine, x, y, rawTile);
+        if (powered) {
+            this.traffic.makeTraffic(x, y, 'COMMERCIAL');
+        }
     }
 
     /**
-     * Math formulas governing industrial factory layouts.
-     * Skeleton port of doIndustrial() from MapScanner.java.
+     * Math formulas governing industrial factory transit connections.
      */
     processIndustrialZone(x, y, rawTile) {
-        ZonePlopManager.checkAndApplyZonePower(this.engine, x, y, rawTile);
+        const powered = ZonePlopManager.checkAndApplyZonePower(this.engine, x, y, rawTile);
+        if (powered) {
+            this.traffic.makeTraffic(x, y, 'INDUSTRIAL');
+        }
     }
 }

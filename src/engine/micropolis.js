@@ -111,4 +111,18 @@ export class Micropolis extends EventEmitter {
         // Strips away overlay/simulation status bits (like the power bit 32768)
         return tile & ~32768; 
     }
+
+    getWidth() {
+        return this.map ? this.map.width : 120;
+    }
+
+    getHeight() {
+        return this.map ? this.map.height : 100;
+    }
+
+    addTraffic(x, y, amount) {
+        // Placeholder for density grid mapping arrays.
+        // In future iterations, this updates an explicit 2D traffic heatmap layer!
+        console.log(`🚗 Traffic recorded at (${x}, ${y}) +${amount} density units.`);
+    }
 }
