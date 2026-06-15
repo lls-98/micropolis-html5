@@ -1,4 +1,5 @@
 import { EvaluationData } from './evaluationData.js';
+import { CityProblem } from './cityProblem.js';
 
 /**
  * CityEval handles public opinion tracking, municipal valuation audits,
@@ -105,10 +106,10 @@ export class CityEval {
      * Compiles, ranks, and logs current urban problems felt by citizens.
      */
     doProblems() {
-        const P = EvaluationData.PROBLEMS;
+        const P = CityProblem; // Shortcut to our clean enum tokens
         this.problemTable = {};
 
-        // Extract metrics from the main engine registers
+        // Extract system calculations using explicit enum keys
         this.problemTable[P.CRIME] = this.engine.crimeAverage || 0;
         this.problemTable[P.POLLUTION] = this.engine.pollutionAverage || 0;
         this.problemTable[P.HOUSING] = Math.round((this.engine.landValueAverage || 0) * 0.7);
@@ -125,7 +126,7 @@ export class CityEval {
             return this.problemVotes[b] - this.problemVotes[a];
         });
 
-        // Filter and clip the array to get the top 4 active problems
+        // Filter out zero votes and grab the top 4 structural complaints
         this.problemOrder = sortedKeys.filter(key => this.problemVotes[key] !== 0).slice(0, 4);
     }
 

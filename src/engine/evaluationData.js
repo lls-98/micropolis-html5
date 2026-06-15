@@ -17,17 +17,6 @@ export const EvaluationData = {
         NUCLEAR: 6000
     },
 
-    // Citizen problem categorization keys matching CityProblem.java contexts
-    PROBLEMS: {
-        CRIME: 'CRIME',
-        POLLUTION: 'POLLUTION',
-        HOUSING: 'HOUSING',
-        TAXES: 'TAXES',
-        TRAFFIC: 'TRAFFIC',
-        UNEMPLOYMENT: 'UNEMPLOYMENT',
-        FIRE: 'FIRE'
-    },
-
     // Population brackets for determining city tier names
     TIERS: [
         { max: 2000,   classID: 0, label: 'VILLAGE' },
