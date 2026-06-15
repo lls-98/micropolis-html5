@@ -47,6 +47,9 @@ export class Micropolis extends EventEmitter {
 
         this.earthquakeListeners = [];
 
+        /** @type {MapListener[]} Array tracking registered observers */
+        this.listeners = [];
+
         console.log("Modular Micropolis Engine Core fully operational.");
     }
 
@@ -161,5 +164,55 @@ export class Micropolis extends EventEmitter {
                 console.error("Error executing EarthquakeListener callback:", err);
             }
         });
+    }
+
+    /**
+     * Attaches a new UI view system or rendering target layer to the engine.
+     * @param {MapListener} listener - Class instance implementing the MapListener hooks
+     */
+    addListener(listener) {
+        if (listener && !this.listeners.includes(listener)) {
+            this.listeners.push(listener);
+        }
+    }
+
+    /**
+     * Detaches an active UI view or layer system from the update broadcast chain.
+     * @param {MapListener} listener 
+     */
+    removeListener(listener) {
+        this.listeners = this.listeners.filter(l => l !== listener);
+    }
+
+    // --- Broadcaster Dispatches matching original Java call parameters ---
+
+    fireMapAnimation() {
+        for (const listener of this.listeners) {
+            listener.mapAnimation();
+        }
+    }
+
+    fireMapOverlayDataChanged(overlayDataType) {
+        for (const listener of this.listeners) {
+            listener.mapOverlayDataChanged(overlayDataType);
+        }
+    }
+
+    fireSpriteMoved(sprite) {
+        for (const listener of this.listeners) {
+            listener.spriteMoved(sprite);
+        }
+    }
+
+    fireTileChanged(xpos, ypos) {
+        for (const listener of this.listeners) {
+            listener.tileChanged(xpos, ypos);
+        }
+    }
+
+    fireWholeMapChanged() {
+        for (const listener of this.listeners) {
+            listener.wholeMapChanged();
+        }
     }
 }
