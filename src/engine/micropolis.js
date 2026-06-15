@@ -45,6 +45,8 @@ export class Micropolis extends EventEmitter {
         this.fireStationEffectMem = Array.from({ length: 15 }, () => new Uint8Array(15));
         this.policeStationEffectMem = Array.from({ length: 15 }, () => new Uint8Array(15));
 
+        this.earthquakeListeners = [];
+
         console.log("Modular Micropolis Engine Core fully operational.");
     }
 
@@ -124,5 +126,40 @@ export class Micropolis extends EventEmitter {
         // Placeholder for density grid mapping arrays.
         // In future iterations, this updates an explicit 2D traffic heatmap layer!
         console.log(`🚗 Traffic recorded at (${x}, ${y}) +${amount} density units.`);
+    }
+
+    /**
+     * Allows UI components, screen-shakers, or sound engines to register interest
+     * in tectonic events. Ports the registration intent of EarthquakeListener.
+     */
+    addEarthquakeListener(callback) {
+        if (typeof callback === 'function') {
+            this.earthquakeListeners.push(callback);
+        }
+    }
+
+    /**
+     * Removes an earthquake listener hook to prevent memory leaks.
+     */
+    removeEarthquakeListener(callback) {
+        this.earthquakeListeners = this.earthquakeListeners.filter(
+            listener => listener !== callback
+        );
+    }
+
+    /**
+     * Core trigger method executed when an earthquake is rolled or forced.
+     * Fires the callback on all registered subscribers.
+     */
+    fireEarthquakeStarted() {
+        console.log("⚠️ Tectonic shift detected! Shaking the city layout...");
+        
+        this.earthquakeListeners.forEach(callback => {
+            try {
+                callback();
+            } catch (err) {
+                console.error("Error executing EarthquakeListener callback:", err);
+            }
+        });
     }
 }
