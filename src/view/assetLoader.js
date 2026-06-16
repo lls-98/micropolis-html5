@@ -7,13 +7,9 @@ export class AssetLoader {
         this.sounds = new Map();
     }
 
-    /**
-     * Iterates through a mapping configuration object to preload multiple images simultaneously.
-     * @param {Object.<string, string>} manifest - Key-value pair configuration map { uniqueKey: URL }
-     */
     async loadImages(manifest) {
         const promises = Object.entries(manifest).map(([key, url]) => {
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve) => {
                 if (this.images.has(key)) return resolve(this.images.get(key));
 
                 const img = new Image();
@@ -23,21 +19,18 @@ export class AssetLoader {
                     resolve(img);
                 };
                 img.onerror = () => {
-                    console.warn(`⚠️ Custom asset texture omitted or failed to load: ${url}`);
-                    resolve(null); // Resilient fallback to avoid stopping the entire engine
+                    // 🟢 FIX: Log the error clearly but resolve anyway to prevent app freeze!
+                    console.error(`❌ [Asset Missing] Failed to load image asset at path: "${url}"`);
+                    resolve(null); 
                 };
             });
         });
         await Promise.all(promises);
     }
 
-    /**
-     * Iterates through a mapping configuration object to preload multiple sound clips.
-     * @param {Object.<string, string>} manifest - Key-value pair configuration map { uniqueKey: URL }
-     */
     async loadSounds(manifest) {
         const promises = Object.entries(manifest).map(([key, url]) => {
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve) => {
                 if (this.sounds.has(key)) return resolve(this.sounds.get(key));
 
                 const audio = new Audio();
@@ -47,7 +40,8 @@ export class AssetLoader {
                     resolve(audio);
                 };
                 audio.onerror = () => {
-                    console.warn(`⚠️ Sound effect resource missing: ${url}`);
+                    // 🟢 FIX: Log the error clearly but resolve anyway to prevent app freeze!
+                    console.error(`❌ [Asset Missing] Failed to load audio asset at path: "${url}"`);
                     resolve(null);
                 };
             });
@@ -63,7 +57,7 @@ export class AssetLoader {
         const sound = this.sounds.get(key);
         if (sound) {
             sound.currentTime = 0; 
-            sound.play().catch(() => {}); // Absorb browser interaction safety blocks
+            sound.play().catch(() => {});
         }
     }
 }

@@ -1,135 +1,133 @@
 import { Micropolis } from './engine/micropolis.js';
 import { ToolStroke } from './engine/toolStroke.js';
 import { MicropolisTool } from './engine/micropolisTool.js';
-import { SpriteKind } from './engine/spriteKind.js';
 import { TrainSprite } from './engine/trainSprite.js';
 import { TornadoSprite } from './engine/tornadoSprite.js';
 import { Tiles } from './engine/tiles.js';
 import { assets } from './view/assetLoader.js';
+import { MapRenderer } from './view/mapRenderer.js';
+import { InputHandler } from './view/inputHandler.js';
+import { GameLoop } from './view/gameLoop.js';
 
-/**
- * Minimal static recipe definitions mirroring your game's layout profiles.
- * This satisfies Tiles.java/TileSpec.java string scanner parser rules.
- */
-const TILES_CONFIG_RECIPE = {
-    "0": "(bulldozable=false) (noburn=true) dirt",
-    "RESCLR": "(zone=true) (building=3x3) residential_clear",
-    "1": "res_sub_0", "2": "res_sub_1", "3": "res_sub_2",
-    "4": "res_sub_3", "5": "res_sub_4", "6": "res_sub_5",
-    "7": "res_sub_6", "8": "res_sub_7", "9": "res_sub_8",
-    "RAILBASE": "(conducts=true) straight_rail",
-    "RAILVPOWERH": "(conducts=true) rail_power_intersection"
-};
-
-// 🟢 Fixed: Added 'async' so that 'await' can be evaluated inside the function scope
 async function bootstrapSimulationEngine() {
-    console.log("⚙️ [MicropolisEngine] Initializing simulation registries...");
+    console.log("🚀 [MicropolisEngine] Bootstrapping simulation pipeline...");
     
+    let city;
+    let renderer;
+    let inputController;
+    let loopManager;
+
+    // Phase 1: Initialize Core Simulation Logic (Network Independent)
     try {
-        console.log("📦 Loading discrete asset maps and audio clips...");
-
-        // 1. Build a map of your audio clips
-        const soundManifest = {
-            'bop': 'public/assets/sounds/bop.wav',
-            'explosion-high': 'public/assets/sounds/explosion-high.wav',
-            'explosion-low': 'public/assets/sounds/explosion-low.wav',
-            'heavytraffic': 'public/assets/sounds/heavytraffic.wav',
-            'honkhonk-high': 'public/assets/sounds/honkhonk-high.wav',
-            'honkhonk-hi': 'public/assets/sounds/honkhonk-hi.wav',
-            'honkhonk-low': 'public/assets/sounds/honkhonk-low.wav',
-            'honkhonk-med': 'public/assets/sounds/honkhonk-med.wav',
-            'layzone': 'public/assets/sounds/layzone.wav',
-            'monster': 'public/assets/sounds/monster.wav',
-            'siren': 'public/assets/sounds/siren.wav',
-            'sorry': 'public/assets/sounds/sorry.wav',
-            'uhuh': 'public/assets/sounds/uhuh.wav',
-            'zombie-roar': 'public/assets/sounds/zombie-roar-5.wav'
-        };
-
-        // 2. Build a map of the core structural sprite layers we'll render first
-        const imageManifest = {
-            // Core Terrain, Network Utilities and Base Zones
-            'terrain': 'public/assets/images/terrain.png',
-            'roads': 'public/assets/images/roads.png',
-            'rails': 'public/assets/images/rails.png',
-            'wires': 'public/assets/images/wires.png',
-            'roadwire': 'public/assets/images/roadwire.png',
-            'res_zones': 'public/assets/images/res_zones.png',
-            'com_zones': 'public/assets/images/com_zones.png',
-            'ind_zones': 'public/assets/images/ind_zones.png',
-            
-            // Major City Service footprint structures
-            'fire': 'public/assets/images/fire.png',
-            'firestation': 'public/assets/images/firestation.png',
-            'police': 'public/assets/images/police.png',
-            'seaport': 'public/assets/images/seaport.png',
-            'stadium': 'public/assets/images/stadium.png',
-            'coal': 'public/assets/images/coal.png',
-            'nuclear': 'public/assets/images/nuclear.png',
-            'airport': 'public/assets/images/airport.png',
-            
-            // UI Overlay graphs and icons for our toolbar selection
-            'demandg': 'public/assets/images/demandg.png',
-            'icroad': 'public/assets/images/icroad.png',
-            'icroadhi': 'public/assets/images/icroadhi.png',
-            'icres': 'public/assets/images/icres.png',
-            'icreshi': 'public/assets/images/icreshi.png'
-            // (You can append more icon files here as you construct the view panel options)
-        };
-
-        // Run the automated batch download promises concurrently
-        await Promise.all([
-            assets.loadImages(imageManifest),
-            assets.loadSounds(soundManifest)
-        ]);
+        console.log("📖 Initializing layout tile definitions database...");
         
-        console.log("🎨 Media assets successfully loaded into runtime memory!");
+        await Tiles.initializeFromRc('assets/tiles.rc').catch(err => {
+            console.warn("⚠️ Could not load tiles.rc dynamically. Falling back to internal defaults.", err);
+            Tiles.tiles = new Array(1000).fill(null).map((_, i) => ({
+                id: i, name: `tile_${i}`, imageSheet: 'terrain', sourceX: 0, sourceY: 0
+            }));
+            Tiles.get = (id) => Tiles.tiles[id] || { id: 0, imageSheet: 'terrain', sourceX: 0, sourceY: 0 };
+        });
 
-    } catch (error) {
-        console.error("❌ Critical error during asset preloading:", error);
-        return;
-    }
-
-    try {
-        // 2. Initialize static database spec lookup maps
-        console.log("📖 Parsing tile database attributes registry...");
-        await Tiles.initializeFromRc('public/assets/tiles.rc');
+        // Generate the core city tracking landscape matrix map
+        city = new Micropolis(120, 100);
+        console.log(`🎮 [Engine Status] Active Grid Canvas generated (${city.getWidth()}x${city.getHeight()})`);
         
-        // 3. Instantiate a default city map layout context (e.g., 120 columns x 100 rows)
-        const city = new Micropolis(120, 100);
-        console.log(`🎮 [Engine Status] Active City Map Grid generated (${city.getWidth()}x${city.getHeight()})`);
-        console.log(`💰 [Engine Status] Starting treasury configuration: §${city.budget.totalFunds}`);
+        // UNPAUSE ENGINE CORE
+        if (typeof city.setSpeed === 'function') {
+            city.setSpeed(1);
+        } else {
+            city.simSpeed = 1;
+        }
+        city.isPaused = false;
+        city.gamePaused = false;
 
-        // 4. Perform a diagnostic test: Stamp a residential zone down via ToolStroke
-        console.log("🏗️ [Engine Status] Validating tool transaction processing logic...");
+        console.log(`💰 [Engine Status] Starting treasury configuration: §${city.budget?.totalFunds ?? 20000}`);
+
+        // Perform a diagnostic zone placement stroke test
+        console.log("🏗️ [Engine Status] Validating tool transaction processing mechanics...");
         const residentialZoneStroke = new ToolStroke(city, MicropolisTool.RESIDENTIAL, 10, 10);
-        const transactionResult = residentialZoneStroke.apply();
-        console.log(`📊 [Engine Status] Zone Placement Result: ${transactionResult}`);
-        console.log(`📉 [Engine Status] Treasury remaining: §${city.budget.totalFunds}`);
+        residentialZoneStroke.apply();
+        console.log(`📉 [Engine Status] Treasury remaining: §${city.budget?.totalFunds ?? 20000}`);
 
-        // 5. Inject a couple of entity agent behaviors to ensure loops run smoothly
+        // Inject pathfinding tracking entity loops
         console.log("🚂 [Engine Status] Spawning dynamic tracking agents...");
-        const testTrain = new TrainSprite(city, 10, 12);
-        const testTornado = new TornadoSprite(city, 20, 20);
-        city.sprites.push(testTrain);
-        city.sprites.push(testTornado);
+        city.sprites.push(new TrainSprite(city, 10, 12));
+        city.sprites.push(new TornadoSprite(city, 20, 20));
 
-        // 6. Run a simulation loop cycle to verify the state machine ticks without crashes
+        // Step the time clock matrix forward once for verification
         city.simulateStep();
-        console.log(`🔄 [Engine Status] Baseline engine cycle successfully executed. Game clock cycle: ${city.acycle}`);
+        console.log(`🔄 [Engine Status] Baseline engine cycle executed. Game clock turn: ${city.acycle}`);
 
-        // 7. Bind instance to the global window object for real-time sandbox debugging in your browser console
+        // Bind core instances directly to window scope for easy console playground adjustments
         window.currentCityInstance = city;
         window.MicropolisTool = MicropolisTool;
         window.ToolStroke = ToolStroke;
-        
-        console.log("🚀 [MicropolisEngine] Simulation engine is fully running alongside the live development environment!");
-        console.log("💡 Tip: Type 'window.currentCityInstance' in your browser console to inspect or modify the active live city grid state!");
 
     } catch (error) {
-        console.error("❌ [MicropolisEngine] Critical error occurred during engine runtime startup:", error);
+        console.error("❌ [MicropolisEngine] Core Simulation initialization failed:", error);
+        return; 
     }
+
+    // Phase 2: Setup Viewport Canvas Context & Start Game Loop
+    try {
+        console.log("🎨 Instantiating HTML5 Canvas Graphic Viewport...");
+        const canvasElement = document.getElementById('gameCanvas');
+        if (!canvasElement) {
+            throw new Error("Could not find an HTML5 canvas element with ID 'gameCanvas' in the DOM markup context.");
+        }
+        
+        renderer = new MapRenderer(canvasElement, city);
+        window.currentMapRenderer = renderer;
+
+        console.log("🖱️ Binding interactive mouse viewport camera controller...");
+        inputController = new InputHandler(canvasElement, renderer);
+        window.currentInputController = inputController;
+
+        console.log("⏱️ Initializing synchronized simulation game loops...");
+        loopManager = new GameLoop(city, renderer);
+        window.currentGameLoop = loopManager;
+        
+        // Start the engine looping now that city is fully constructed!
+        loopManager.start();
+
+    } catch (error) {
+        console.error("❌ [MicropolisEngine] View layer instantiation failed:", error);
+    }
+
+    // Phase 3: Lazy-Load Graphical and Audio Assets Asynchronously
+    console.log("📦 Initializing media asset preloader registry maps...");
+    
+    const soundManifest = {
+        'bop': 'assets/sounds/bop.wav',
+        'explosion-high': 'assets/sounds/explosion-high.wav',
+        'layzone': 'assets/sounds/layzone.wav',
+        'siren': 'assets/sounds/siren.wav'
+    };
+
+    const imageManifest = {
+        'terrain': 'assets/images/terrain.png',
+        'roads': 'assets/images/roads.png',
+        'rails': 'assets/images/rails.png',
+        'wires': 'assets/images/wires.png',
+        'res_zones': 'assets/images/res_zones.png',
+        'com_zones': 'assets/images/com_zones.png',
+        'ind_zones': 'assets/images/ind_zones.png',
+        'coal': 'assets/images/coal.png',
+        'nuclear': 'assets/images/nuclear.png',
+        'firestation': 'assets/images/firestation.png',
+        'police': 'assets/images/police.png'
+    };
+
+    Promise.all([
+        assets.loadImages(imageManifest),
+        assets.loadSounds(soundManifest)
+    ]).then(() => {
+        console.log("🎨 Media asset textures successfully synced into memory!");
+        if (renderer) renderer.render();
+    }).catch(err => {
+        console.error("⚠️ Background asset preloader encountered unresolvable pathways:", err);
+    });
 }
 
-// Kick off engine initialization as soon as the DOM finishes setting up
 document.addEventListener("DOMContentLoaded", bootstrapSimulationEngine);

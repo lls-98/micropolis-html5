@@ -1,15 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Micropolis HTML5</title>
-        <link rel="stylesheet" href="css/styles.css"
-    </head>
-    <body>
-        <h1>Micropolis HTML5 Simulation Sandbox</h1>
-        <p>Open the browser dev console to see it in action.</p>
+<head>
+    <meta charset="UTF-8">
+    <title>Micropolis JS Simulation Sandbox</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #222;
+            color: #fff;
+            font-family: sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #ui-toolbar {
+            height: 50px;
+            background-color: #333;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            cursor: grab;
+        }
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: block;
+        }
+    </style>
+</head>
+<body>
 
-        <script type="module" src="src/main.js"></script>
-    </body>
+    <div id="ui-toolbar">
+        <strong>Micropolis Simulator Engine Sandbox</strong>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="gameCanvas"></canvas>
+    </div>
+<script type="module" src="src/main.js"></script>
+</body>
 </html>
