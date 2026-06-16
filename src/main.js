@@ -92,7 +92,8 @@ async function bootstrapSimulationEngine() {
 
     try {
         // 2. Initialize static database spec lookup maps
-        Tiles.initialize(TILES_CONFIG_RECIPE);
+        console.log("📖 Parsing tile database attributes registry...");
+        await Tiles.initializeFromRc('public/assets/tiles.rc');
         
         // 3. Instantiate a default city map layout context (e.g., 120 columns x 100 rows)
         const city = new Micropolis(120, 100);

@@ -2,74 +2,104 @@ import { TileSpec } from './tileSpec.js';
 
 /**
  * Tiles registry acts as a singleton container for all tile definitions.
+ * Parses the classic MicropolisJ .rc asset text database dynamically.
  */
 export class Tiles {
     static tiles = [];
     static tilesByName = new Map();
 
     /**
-     * Bootstraps the grid specification mapping structure using raw recipe properties.
-     * Matches the call expected by main.js.
-     * @param {object} tilesRc - Key-value pair collection mirroring tile specifications.
+     * Dynamically downloads and parses the master tiles.rc configuration layout sheet.
+     * Replaces the old temporary manual recipe initializer.
+     * @param {string} rcUrl - Relative path to the asset file (e.g. 'assets/tiles.rc')
      */
-    static initialize(tilesRc) {
-        Tiles.tiles = [];
-        Tiles.tilesByName.clear();
-
-        // Generate names array using keys or numeric sequences from the config recipe
-        const tileNames = Object.keys(tilesRc);
-        
-        // Find the maximum numeric tile ID to safely dimension our index array
-        let maxId = 0;
-        for (const name of tileNames) {
-            if (/^\d+$/.test(name)) {
-                maxId = Math.max(maxId, parseInt(name, 10));
-            }
-        }
-        
-        // Size the internal array to fit all raw tiles or string indices
-        Tiles.tiles = new Array(Math.max(maxId + 1, tileNames.length));
-
-        // First pass: Instantiate individual TileSpecs
-        for (const tileName of tileNames) {
-            const rawSpec = tilesRc[tileName];
+    static async initializeFromRc(rcUrl = 'assets/tiles.rc') {
+        try {
+            const response = await fetch(rcUrl);
+            if (!response.ok) throw new Error(`Could not locate tile database at ${rcUrl}`);
             
-            // Assuming TileSpec has a parsing engine attached
-            // If TileSpec constructor signature is (id, name, rawText), adapt here:
-            let numericId = /^\d+$/.test(tileName) ? parseInt(tileName, 10) : tileNames.indexOf(tileName);
-            
-            // Using a resilient parsing approach matching our previous TileSpec specifications
-            const ts = typeof TileSpec.parse === 'function' 
-                ? TileSpec.parse(numericId, tileName, rawSpec, tilesRc)
-                : new TileSpec(numericId, tileName, { rawSpec });
+            const text = await response.text();
+            const lines = text.split(/\r?\n/);
+            const tileDefinitions = [];
 
-            Tiles.tilesByName.set(tileName, ts);
-            if (/^\d+$/.test(tileName)) {
-                Tiles.tiles[numericId] = ts;
-            }
-        }
+            // Match Line Syntax: ID    image_sheet@x,y|ani_sheet@x,y   (flags)
+            // Example: 924 coal@32,16|coal_smoke_animation@32,16 (conducts)(building-part=750,1,0)
+            const lineRegex = /^(\d+)\s+([^(\s]+)(.*)$/;
 
-        // Second pass: Cross-resolve structural parent/child reference networks
-        for (const name of Tiles.tilesByName.keys()) {
-            const ts = Tiles.tilesByName.get(name);
-            if (ts && typeof ts.resolveReferences === 'function') {
-                ts.resolveReferences(Tiles.tilesByName);
+            for (let line of lines) {
+                line = line.trim();
+                // Omit documentation notes, blank lines or comments
+                if (!line || line.startsWith('#')) continue;
+
+                const match = line.match(lineRegex);
+                if (!match) continue;
+
+                const tileId = parseInt(match[1], 10);
+                const sourceTextures = match[2]; // e.g. "coal@32,16|coal_smoke_animation@32,16"
+                const rawFlags = match[3] || ""; // e.g. "(conducts)(building-part=750,1,0)"
+
+                // Split static texture definition from animation overlay sequences
+                const textureParts = sourceTextures.split('|');
+                const staticPart = textureParts[0]; // "coal@32,16"
+                const animationPart = textureParts[1] || null; // "coal_smoke_animation@32,16"
+
+                // Extract image asset sheet name and pixel clipping coordinates
+                const [imageSheet, coordString] = staticPart.split('@');
+                let sourceX = 0, sourceY = 0;
+                if (coordString) {
+                    const [sx, sy] = coordString.split(',').map(Number);
+                    sourceX = sx;
+                    sourceY = sy;
+                }
+
+                // Compile definition object structured for TileSpec consumption
+                const definition = {
+                    id: tileId,
+                    name: `${imageSheet}_tile_${tileId}`, // Unique reference string fallback
+                    imageSheet: imageSheet,              // Matches file descriptors (e.g. 'coal', 'terrain')
+                    sourceX: sourceX,                    // Clipping X origin on the image sheet
+                    sourceY: sourceY,                    // Clipping Y origin on the image sheet
+                    rawFlags: rawFlags,                  // Unparsed string containing flag properties
+                    animated: !!animationPart,
+                    animationSheet: animationPart ? animationPart.split('@')[0] : null
+                };
+
+                tileDefinitions[tileId] = definition;
             }
+
+            // Standardize density allocations to match array sizes smoothly
+            await this.init(tileDefinitions.filter(Boolean));
+            console.log(`💾 [Tiles Database] Successfully registered ${this.tiles.length} active tile specifications from tiles.rc!`);
+
+        } catch (error) {
+            console.error("❌ Failed to parse tiles database script configurations:", error);
+            throw error;
         }
     }
 
     /**
-     * Legacy async asset loader block retained for backward compatibility
+     * Initializes the registry by turning raw definitions into full TileSpecs.
      */
     static async init(tileDefinitions) {
+        // Clear previous runs to allow clean warm resets
+        this.tiles = [];
+        this.tilesByName.clear();
+
+        // Convert array of definition objects into TileSpec instances
         for (let i = 0; i < tileDefinitions.length; i++) {
             const def = tileDefinitions[i];
-            const ts = new TileSpec(i, def.name, def);
-            this.tiles[i] = ts;
+            if (!def) continue;
+
+            const ts = new TileSpec(def.id, def.name, def);
+            this.tiles[def.id] = ts;
             this.tilesByName.set(def.name, ts);
         }
+
+        // Resolve cross-references (building members, adjacency paths, shut downs)
         for (let ts of this.tiles) {
-            if (ts) ts.resolveReferences(this.tilesByName);
+            if (ts && typeof ts.resolveReferences === 'function') {
+                ts.resolveReferences(this.tilesByName);
+            }
         }
     }
 
@@ -84,7 +114,7 @@ export class Tiles {
     }
 
     static loadByOrdinal(tileNumber) {
-        return Tiles.get(tileNumber);
+        return this.get(tileNumber);
     }
 
     static getTileCount() {
