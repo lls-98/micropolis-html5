@@ -32,11 +32,27 @@ export class Micropolis extends EventEmitter {
         this.powerGrid = new PowerGrid(this);
         this.disasters = new DisasterManager(this);
 
+        // Add this inside micropolis.js constructor if not already there
+        this.sprites = []; 
+        this.acycle = 0;
+
+        // 🟢 ADD THIS PRNG OBJECT HERE:
+        // Provides a Java-like random integer function interface for wandering sprites.
+        // Fixes the "Cannot read properties of undefined (reading 'nextInt')" crash!
+        this.PRNG = {
+            nextInt: (max) => Math.floor(Math.random() * max)
+        };
+
         // --- Stubs for Future Engine Files ---
         // These are separate files in the java source tree that we will port later
         this.scanner = new MapScanner(this);
-        this.budget = null;   // Becomes CityBudget.js
         this.evaluation = null; // Becomes CityEval.js
+
+        this.budget = {
+            get totalFunds() { return this._city.totalFunds; },
+            set totalFunds(v) { this._city.totalFunds = v; },
+            _city: this
+        };
 
         this.poweredZoneCount = 0;
         this.unpoweredZoneCount = 0;
@@ -71,6 +87,18 @@ export class Micropolis extends EventEmitter {
     spendFunds(amount) {
         this.totalFunds += amount;
         this.emit('funds-changed', this.totalFunds);
+    }
+
+    /**
+     * 🟢 ADD THIS ALIAS BRIDGE INTERFACE HERE:
+     * Maps the old tool engine spend invocation directly to modern spendFunds mechanics.
+     * Fixes the 'this.city.spend is not a function' crash!
+     */
+    spend(amount) {
+        // Note: Java spent cash by passing a positive cost, which needs to be subtracted
+        // from total funds, whereas spendFunds might handle absolute arithmetic.
+        // Let's pass it as a negative delta to deduct funds safely:
+        this.spendFunds(-amount);
     }
 
     /**
@@ -123,6 +151,41 @@ export class Micropolis extends EventEmitter {
 
     getHeight() {
         return this.map ? this.map.height : 100;
+    }
+
+    /**
+     * 🟢 ADD THIS METHOD HERE:
+     * Exposes the active entity tracker array to simulation physics sprites.
+     * Fixes the 'this.city.allSprites is not a function' crash!
+     * @returns {Sprite[]} Array of tracking entities.
+     */
+    allSprites() {
+        return this.sprites;
+    }
+
+    /**
+     * 🟢 ADD THIS METHOD HERE:
+     * Simulates destruction of a tile on the map layout grid.
+     * Triggered by environmental disasters like a TornadoSprite tearing through structures.
+     * Fixes the 'this.city.destroyTile is not a function' crash!
+     * @param {number} x - Column grid index coordinate.
+     * @param {number} y - Row grid index coordinate.
+     */
+    destroyTile(x, y) {
+        if (!this.testBounds(x, y)) return;
+
+        const currentTile = this.getTile(x, y);
+        
+        // Basic fallback: If the tile isn't empty dirt, obliterate it!
+        if (currentTile !== 0) {
+            console.log(`💥 [Disaster Dynamics] Structure destroyed at grid location (${x}, ${y})`);
+            
+            // Replaces the tile index with 0 (dirt) from your configuration recipe
+            this.setTile(x, y, 0); 
+            
+            // In future steps, we can also trigger explosion sound dispatches:
+            // this.fireSoundEffect(Sound.EXPLOSION);
+        }
     }
 
     addTraffic(x, y, amount) {
@@ -213,6 +276,27 @@ export class Micropolis extends EventEmitter {
     fireWholeMapChanged() {
         for (const listener of this.listeners) {
             listener.wholeMapChanged();
+        }
+    }
+
+    /**
+     * Stepping loop frame tick engine executed by main.js
+     */
+    simulateStep() {
+        this.acycle++;
+        if (this.clock && typeof this.clock.tick === 'function') {
+            this.clock.tick();
+        }
+        
+        // Let any spawned testing sprites execute their move intervals
+        for (let i = this.sprites.length - 1; i >= 0; i--) {
+            const sprite = this.sprites[i];
+            if (sprite && typeof sprite.moveImpl === 'function') {
+                sprite.moveImpl();
+                if (sprite.frame === 0) {
+                    this.sprites.splice(i, 1);
+                }
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-import { TileBehavior } from './tile-behavior.js';
+import { TileBehavior } from './tileBehavior.js';
 import { TileConstants } from './tileConstants.js';
 import { SpriteKind } from './spriteKind.js';
 
