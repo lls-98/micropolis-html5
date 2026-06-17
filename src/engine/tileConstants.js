@@ -135,7 +135,6 @@ export const TileConstants = Object.freeze({
     LOMASK: 1023,   // Binary mask for isolation of the lower 10-bit raw tile graphic index
 
     // --- Autoconnection State Tables ---
-    // Ports the raw arrays used to calculate tile tile-snapping variations dynamically
     RoadTable: Object.freeze([
         66, 67, 66, 68,
         67, 67, 69, 73,
@@ -157,13 +156,37 @@ export const TileConstants = Object.freeze({
         230, 235, 234, 236
     ]),
 
-    // --- Core Translation Inline Utilities ---
+    // ===================================================================
+    // 🟢 ADDED DYNAMIC INFRASTRUCTURE EVALUATION METHOD UTILITIES
+    // ===================================================================
+    
+    /** Validates if tile ID falls within standard road boundaries */
+    isRoadDynamic(tileId) {
+        const cleanedId = tileId & this.LOMASK;
+        return cleanedId >= this.ROADBASE && cleanedId < this.LASTROAD;
+    },
+
+    /** Validates if tile ID falls within standard railroad boundaries */
+    isRailDynamic(tileId) {
+        const cleanedId = tileId & this.LOMASK;
+        return cleanedId >= this.RAILBASE && cleanedId <= this.LASTRAIL;
+    },
+
+    /** Neighboring connection validators requested by toolStroke autoConnect loops */
+    roadConnectsSouth(id) { return this.isRoadDynamic(id); },
+    roadConnectsWest(id)  { return this.isRoadDynamic(id); },
+    roadConnectsNorth(id) { return this.isRoadDynamic(id); },
+    roadConnectsEast(id)  { return this.isRoadDynamic(id); },
+
+    railConnectsSouth(id) { return this.isRailDynamic(id); },
+    railConnectsWest(id)  { return this.isRailDynamic(id); },
+    railConnectsNorth(id) { return this.isRailDynamic(id); },
+    railConnectsEast(id)  { return this.isRailDynamic(id); },
+
+    // ===================================================================
 
     /**
      * Converts a road tile back to its un-congested base value.
-     * Ports the math of capitalize/neutralizeRoad using JavaScript bitmasks.
-     * @param {number} tile 
-     * @returns {number}
      */
     neutralizeRoad(tile) {
         tile = tile & this.LOMASK;

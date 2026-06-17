@@ -8,6 +8,7 @@ import { assets } from './view/assetLoader.js';
 import { MapRenderer } from './view/mapRenderer.js';
 import { InputHandler } from './view/inputHandler.js';
 import { GameLoop } from './view/gameLoop.js';
+import { Toolbar } from './view/toolbar.js';
 
 async function bootstrapSimulationEngine() {
     console.log("🚀 [MicropolisEngine] Bootstrapping simulation pipeline...");
@@ -33,6 +34,31 @@ async function bootstrapSimulationEngine() {
         city = new Micropolis(120, 100);
         console.log(`🎮 [Engine Status] Active Grid Canvas generated (${city.getWidth()}x${city.getHeight()})`);
         
+        // ===================================================================
+        // 🟢 GLOBAL TILE CONSTANTS NETWORK CONNECTIVITY AUTOPATCH
+        // ===================================================================
+        window.TileConstants = window.TileConstants || {};
+        
+        // Boundaries
+        window.TileConstants.isRoadDynamic = (id) => id >= 64 && id <= 205;
+        window.TileConstants.isRailDynamic = (id) => id >= 206 && id <= 238;
+
+        // Adjacency Evaluation Fallbacks (returns true if neighboring tile matches type)
+        window.TileConstants.roadConnectsSouth = (id) => window.TileConstants.isRoadDynamic(id);
+        window.TileConstants.roadConnectsWest  = (id) => window.TileConstants.isRoadDynamic(id);
+        window.TileConstants.roadConnectsNorth = (id) => window.TileConstants.isRoadDynamic(id);
+        window.TileConstants.roadConnectsEast  = (id) => window.TileConstants.isRoadDynamic(id);
+
+        window.TileConstants.railConnectsSouth = (id) => window.TileConstants.isRailDynamic(id);
+        window.TileConstants.railConnectsWest  = (id) => window.TileConstants.isRailDynamic(id);
+        window.TileConstants.railConnectsNorth = (id) => window.TileConstants.isRailDynamic(id);
+        window.TileConstants.railConnectsEast  = (id) => window.TileConstants.isRailDynamic(id);
+
+        // Basic Tile Lookups Tables (Fills a flat fallback translation matrix)
+        window.TileConstants.RoadTable = new Array(16).fill(76); // Default crossing tile index fallback
+        window.TileConstants.RailTable = new Array(16).fill(211);
+        // ===================================================================
+
         // UNPAUSE ENGINE CORE
         if (typeof city.setSpeed === 'function') {
             city.setSpeed(1);
@@ -80,15 +106,18 @@ async function bootstrapSimulationEngine() {
         renderer = new MapRenderer(canvasElement, city);
         window.currentMapRenderer = renderer;
 
+        console.log("🛠️ Injecting floating user interface builder panels...");
+        const toolbarUi = new Toolbar(canvasElement.parentElement || document.body);
+        window.currentToolbar = toolbarUi;
+
         console.log("🖱️ Binding interactive mouse viewport camera controller...");
-        inputController = new InputHandler(canvasElement, renderer);
+        inputController = new InputHandler(canvasElement, renderer, toolbarUi);
         window.currentInputController = inputController;
 
         console.log("⏱️ Initializing synchronized simulation game loops...");
         loopManager = new GameLoop(city, renderer);
         window.currentGameLoop = loopManager;
         
-        // Start the engine looping now that city is fully constructed!
         loopManager.start();
 
     } catch (error) {
